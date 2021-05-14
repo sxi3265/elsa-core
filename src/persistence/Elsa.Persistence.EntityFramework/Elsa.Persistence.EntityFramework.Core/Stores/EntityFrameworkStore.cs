@@ -1,15 +1,15 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
-using EFCore.BulkExtensions;
 using Elsa.Models;
 using Elsa.Persistence.EntityFramework.Core.Services;
 using Elsa.Persistence.Specifications;
 using Microsoft.EntityFrameworkCore;
+using Z.EntityFramework.Plus;
 
 namespace Elsa.Persistence.EntityFramework.Core.Stores
 {
@@ -96,12 +96,12 @@ namespace Elsa.Persistence.EntityFramework.Core.Stores
             }, cancellationToken);
         }
 
-        public virtual async Task DeleteAsync(T entity, CancellationToken cancellationToken = default) => await DoWorkOnSet(async dbSet => await dbSet.AsQueryable().Where(x => x.Id == entity.Id).BatchDeleteAsync(cancellationToken), cancellationToken);
+        public virtual async Task DeleteAsync(T entity, CancellationToken cancellationToken = default) => await DoWorkOnSet(async dbSet => await dbSet.AsQueryable().Where(x => x.Id == entity.Id).DeleteAsync(cancellationToken), cancellationToken);
 
         public virtual async Task<int> DeleteManyAsync(ISpecification<T> specification, CancellationToken cancellationToken = default)
         {
             var filter = MapSpecification(specification);
-            return await DoWorkOnSet(async dbSet => await dbSet.Where(filter).BatchDeleteAsync(cancellationToken), cancellationToken);
+            return await DoWorkOnSet(async dbSet => await dbSet.Where(filter).DeleteAsync(cancellationToken), cancellationToken);
         }
 
         public async Task<IEnumerable<T>> FindManyAsync(ISpecification<T> specification, IOrderBy<T>? orderBy = default, IPaging? paging = default, CancellationToken cancellationToken = default)
