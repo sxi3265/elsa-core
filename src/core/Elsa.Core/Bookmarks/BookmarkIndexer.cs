@@ -61,8 +61,7 @@ namespace Elsa.Bookmarks
 
             var workflowInstanceList = workflowInstances.ToList();
             var workflowInstanceIds = workflowInstanceList.Select(x => x.Id).ToList();
-            await DeleteBookmarksAsync(workflowInstanceIds, cancellationToken);
-
+            var oldBookmarks = await FindBookmarksAsync(workflowInstanceIds, cancellationToken).ToList();
             var workflowBlueprints = await _workflowRegistry.ListActiveAsync(cancellationToken);
             var workflowBlueprintsDictionary = workflowBlueprints.ToDictionary(x => (x.Id, x.Version));
             var entities = new List<Bookmark>();
@@ -85,6 +84,8 @@ namespace Elsa.Bookmarks
             }
             
             await _bookmarkStore.AddManyAsync(entities, cancellationToken);
+            var oldBookmarkIds = oldBookmarks.Select(x => x.Id).ToList();
+            await _bookmarkStore.DeleteManyAsync(new BookmarkIdsSpecification(oldBookmarkIds), cancellationToken);
 
             _stopwatch.Stop();
             _logger.LogInformation("Indexed {BookmarkCount} bookmarks in {ElapsedTime}", entities.Count, _stopwatch.Elapsed);
@@ -106,6 +107,12 @@ namespace Elsa.Bookmarks
             _logger.LogDebug("Deleted {DeletedBookmarkCount} bookmarks for workflow {WorkflowInstanceId}", count, workflowInstanceId);
         }
         
+        private async Task<IEnumerable<Bookmark>> FindBookmarksAsync(IEnumerable<string> workflowInstanceIds, CancellationToken cancellationToken = default)
+        {
+            var specification = new WorkflowInstanceIdsSpecification(workflowInstanceIds);
+            return await _bookmarkStore.FindManyAsync(specification, cancellationToken: cancellationToken);
+        }
+        
         private IEnumerable<Bookmark> MapBookmarks(IEnumerable<BookmarkedWorkflow> bookmarkedWorkflows, WorkflowInstance workflowInstance) =>
             bookmarkedWorkflows.SelectMany(triggerDescriptor => triggerDescriptor.Bookmarks.Select(x => new Bookmark
             {
@@ -114,6 +121,7 @@ namespace Elsa.Bookmarks
                 ActivityType = triggerDescriptor.ActivityType,
                 ActivityId = triggerDescriptor.ActivityId,
                 WorkflowInstanceId = workflowInstance.Id,
+                CorrelationId = workflowInstance.CorrelationId,
                 Hash = _hasher.Hash(x),
                 Model = _contentSerializer.Serialize(x),
                 ModelType = x.GetType().GetSimpleAssemblyQualifiedName()

@@ -66,6 +66,12 @@ namespace Elsa.Services.Models
             return data.GetState<T>(propertyName);
         }
         
+        public T GetState<T>(string propertyName, Func<T> defaultValue)
+        {
+            var data = GetData();
+            return data.GetState<T>(propertyName, defaultValue);
+        }
+        
         public T? GetState<TActivity, T>(Expression<Func<TActivity, T>> propertyExpression) where TActivity : IActivity
         {
             var expression = (MemberExpression) propertyExpression.Body;
@@ -174,5 +180,7 @@ namespace Elsa.Services.Models
 
             return state;
         }
+
+        public void Fault(Exception exception) => WorkflowExecutionContext.Fault(exception, ActivityId, Input, Resuming);
     }
 }

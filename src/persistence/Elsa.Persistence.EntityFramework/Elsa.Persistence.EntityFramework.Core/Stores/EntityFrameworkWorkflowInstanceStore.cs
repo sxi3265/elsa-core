@@ -1,15 +1,15 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AutoMapper;
 using Elsa.Models;
+using Elsa.Persistence.EntityFramework.Core.Extensions;
 using Elsa.Persistence.EntityFramework.Core.Services;
 using Elsa.Persistence.Specifications;
 using Elsa.Serialization;
 using Newtonsoft.Json;
-using Z.EntityFramework.Plus;
 
 namespace Elsa.Persistence.EntityFramework.Core.Stores
 {
@@ -28,9 +28,9 @@ namespace Elsa.Persistence.EntityFramework.Core.Stores
 
             await DoWork(async dbContext =>
             {
-                await dbContext.Set<WorkflowExecutionLogRecord>().AsQueryable().Where(x => x.WorkflowInstanceId == workflowInstanceId).DeleteAsync(cancellationToken);
-                await dbContext.Set<Bookmark>().AsQueryable().Where(x => x.WorkflowInstanceId == workflowInstanceId).DeleteAsync(cancellationToken);
-                await dbContext.Set<WorkflowInstance>().AsQueryable().Where(x => x.Id == workflowInstanceId).DeleteAsync(cancellationToken);
+                await dbContext.Set<WorkflowExecutionLogRecord>().AsQueryable().Where(x => x.WorkflowInstanceId == workflowInstanceId).BatchDeleteWithWorkAroundAsync(dbContext, cancellationToken);
+                await dbContext.Set<Bookmark>().AsQueryable().Where(x => x.WorkflowInstanceId == workflowInstanceId).BatchDeleteWithWorkAroundAsync(dbContext, cancellationToken);
+                await dbContext.Set<WorkflowInstance>().AsQueryable().Where(x => x.Id == workflowInstanceId).BatchDeleteWithWorkAroundAsync(dbContext, cancellationToken);
             }, cancellationToken);
         }
 
@@ -41,9 +41,9 @@ namespace Elsa.Persistence.EntityFramework.Core.Stores
 
             await DoWork(async dbContext =>
             {
-                await dbContext.Set<WorkflowExecutionLogRecord>().AsQueryable().Where(x => workflowInstanceIds.Contains(x.WorkflowInstanceId)).DeleteAsync(cancellationToken);
-                await dbContext.Set<Bookmark>().AsQueryable().Where(x => workflowInstanceIds.Contains(x.WorkflowInstanceId)).DeleteAsync(cancellationToken);
-                await dbContext.Set<WorkflowInstance>().AsQueryable().Where(x => workflowInstanceIds.Contains(x.Id)).DeleteAsync(cancellationToken);
+                await dbContext.Set<WorkflowExecutionLogRecord>().AsQueryable().Where(x => workflowInstanceIds.Contains(x.WorkflowInstanceId)).BatchDeleteWithWorkAroundAsync(dbContext, cancellationToken);
+                await dbContext.Set<Bookmark>().AsQueryable().Where(x => workflowInstanceIds.Contains(x.WorkflowInstanceId)).BatchDeleteWithWorkAroundAsync(dbContext, cancellationToken);
+                await dbContext.Set<WorkflowInstance>().AsQueryable().Where(x => workflowInstanceIds.Contains(x.Id)).BatchDeleteWithWorkAroundAsync(dbContext, cancellationToken);
             }, cancellationToken);
 
             return workflowInstances.Count;

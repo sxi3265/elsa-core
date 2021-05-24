@@ -10,6 +10,10 @@
             This package provides Entity Framework Core entities used by the various Elsa persistence EF Core providers.
         </Description>
         <PackageTags>elsa, workflows, efcore</PackageTags>
+        <PackageId>EasyNow.Elsa.Persistence.EntityFramework.Core</PackageId>
+        <PackageProjectUrl>https://github.com/sxi3265/elsa-core</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/sxi3265/elsa-core</RepositoryUrl>
+        <Version>2.0.0-rc2.73</Version>
     </PropertyGroup>
 
     <ItemGroup>

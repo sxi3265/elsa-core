@@ -36,8 +36,9 @@ export namespace Components {
         "menuItems": Array<MenuItem>;
     }
     interface ElsaDesignerTree {
+        "activityBorderColor"?: (activity: ActivityModel) => string;
         "activityContextMenu"?: ActivityContextMenuState;
-        "activityContextMenuButton"?: string;
+        "activityContextMenuButton"?: (activity: ActivityModel) => string;
         "mode": WorkflowDesignerMode;
         "model": WorkflowModel;
         "removeActivity": (activity: ActivityModel) => Promise<void>;
@@ -543,8 +544,9 @@ declare namespace LocalJSX {
         "menuItems"?: Array<MenuItem>;
     }
     interface ElsaDesignerTree {
+        "activityBorderColor"?: (activity: ActivityModel) => string;
         "activityContextMenu"?: ActivityContextMenuState;
-        "activityContextMenuButton"?: string;
+        "activityContextMenuButton"?: (activity: ActivityModel) => string;
         "mode"?: WorkflowDesignerMode;
         "model"?: WorkflowModel;
         "onActivityContextMenuButtonClicked"?: (event: CustomEvent<ActivityContextMenuState>) => void;

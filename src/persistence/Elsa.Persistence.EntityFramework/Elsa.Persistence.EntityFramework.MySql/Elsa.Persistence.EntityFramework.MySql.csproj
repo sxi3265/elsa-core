@@ -10,6 +10,11 @@
             This package provides Entity Framework Core migrations for the MySql database provider.
         </Description>
         <PackageTags>elsa, workflows, efcore, mysql, mariadb</PackageTags>
+        <Version>2.0.0-rc2.73</Version>
+        <PackageId>EasyNow.Elsa.Persistence.EntityFramework.MySql</PackageId>
+        <Product>yNow.Elsa.Persistence.EntityFramework.MySql</Product>
+        <PackageProjectUrl>https://github.com/sxi3265/elsa-core</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/sxi3265/elsa-core</RepositoryUrl>
     </PropertyGroup>
 
     <ItemGroup>
