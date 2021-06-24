@@ -1,10 +1,13 @@
+using System;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 using Elsa.Activities.Http.Models;
 using Elsa.ActivityResults;
 using Elsa.Attributes;
 using Elsa.Design;
 using Elsa.Expressions;
+using Elsa.Serialization;
 using Elsa.Services;
 using Elsa.Services.Models;
 using Microsoft.AspNetCore.Http;
@@ -22,11 +25,13 @@ namespace Elsa.Activities.Http
     public class WriteHttpResponse : Activity
     {
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IContentSerializer _contentSerializer;
 
-        public WriteHttpResponse(IHttpContextAccessor httpContextAccessor, IStringLocalizer<WriteHttpResponse> localizer)
+        public WriteHttpResponse(IHttpContextAccessor httpContextAccessor, IStringLocalizer<WriteHttpResponse> localizer, IContentSerializer contentSerializer)
         {
             T = localizer;
             _httpContextAccessor = httpContextAccessor;
+            _contentSerializer = contentSerializer;
         }
 
         private IStringLocalizer T { get; }
@@ -34,26 +39,27 @@ namespace Elsa.Activities.Http
         /// <summary>
         /// The HTTP status code to return.
         /// </summary>
-        [ActivityProperty(
-            UIHint = ActivityPropertyUIHints.Dropdown,
+        [ActivityInput(
+            UIHint = ActivityInputUIHints.Dropdown,
             Hint = "The HTTP status code to write.",
             Options = new[] { HttpStatusCode.OK, HttpStatusCode.Created, HttpStatusCode.Accepted, HttpStatusCode.NoContent, HttpStatusCode.Redirect, HttpStatusCode.BadRequest, HttpStatusCode.NotFound, HttpStatusCode.Conflict },
             SupportedSyntaxes = new[] { SyntaxNames.Literal, SyntaxNames.JavaScript, SyntaxNames.Liquid },
-            DefaultValue = HttpStatusCode.OK
+            DefaultValue = HttpStatusCode.OK,
+            Category = PropertyCategories.Advanced
         )]
         public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
 
         /// <summary>
-        /// The content to send along with the response
+        /// The content to send along with the response.
         /// </summary>
-        [ActivityProperty(Hint = "The HTTP content to write.", UIHint = ActivityPropertyUIHints.MultiLine, SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
-        public string? Content { get; set; }
+        [ActivityInput(Hint = "The HTTP content to write.", UIHint = ActivityInputUIHints.MultiLine, SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
+        public object? Content { get; set; }
 
         /// <summary>
         /// The Content-Type header to send along with the response.
         /// </summary>
-        [ActivityProperty(
-            UIHint = ActivityPropertyUIHints.Dropdown,
+        [ActivityInput(
+            UIHint = ActivityInputUIHints.Dropdown,
             Hint = "The HTTP content type header to write.",
             Options = new[] { "text/plain", "text/html", "application/json", "application/xml" },
             DefaultValue = "text/plain",
@@ -62,9 +68,27 @@ namespace Elsa.Activities.Http
         public string? ContentType { get; set; } = "text/plain";
 
         /// <summary>
+        /// The character set to use when writing the response.
+        /// </summary>
+        [ActivityInput(
+            Hint = "The character set to use when writing the response.",
+            UIHint = ActivityInputUIHints.Dropdown,
+            Options = new[] { "", "utf-8", "ASCII", "ANSI", "ISO-8859-1" },
+            DefaultValue = "utf-8",
+            SupportedSyntaxes = new[] { SyntaxNames.Literal, SyntaxNames.JavaScript, SyntaxNames.Liquid },
+            Category = PropertyCategories.Advanced)]
+        public string CharSet { get; set; } = "utf-8";
+
+        /// <summary>
         /// The headers to send along with the response.
         /// </summary>
-        [ActivityProperty(Hint = "Additional headers to write.", UIHint = ActivityPropertyUIHints.Json)]
+        [ActivityInput(
+            Hint = "Additional headers to write.",
+            UIHint = ActivityInputUIHints.MultiLine,
+            DefaultSyntax = SyntaxNames.Json,
+            SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid, SyntaxNames.Json },
+            Category = PropertyCategories.Advanced
+        )]
         public HttpResponseHeaders? ResponseHeaders { get; set; }
 
         protected override async ValueTask<IActivityExecutionResult> OnExecuteAsync(ActivityExecutionContext context)
@@ -76,7 +100,7 @@ namespace Elsa.Activities.Http
                 return Fault(T["Response has already started"]!);
 
             response.StatusCode = (int) StatusCode;
-            response.ContentType = ContentType;
+            response.ContentType = string.IsNullOrWhiteSpace(CharSet) ? ContentType : $"{ContentType};charset={CharSet}";
 
             var headers = ResponseHeaders;
 
@@ -86,12 +110,37 @@ namespace Elsa.Activities.Http
                     response.Headers[header.Key] = header.Value;
             }
 
-            var bodyText = Content;
-
-            if (!string.IsNullOrWhiteSpace(bodyText))
-                await response.WriteAsync(bodyText, context.CancellationToken);
+            await WriteContentAsync(context.CancellationToken);
 
             return Done();
+        }
+
+        private async Task WriteContentAsync(CancellationToken cancellationToken)
+        {
+            var httpContext = _httpContextAccessor.HttpContext ?? new DefaultHttpContext();
+            var response = httpContext.Response;
+            
+            var content = Content;
+
+            if (content == null)
+                return;
+            
+            if (content is string stringContent)
+            {
+                if (!string.IsNullOrWhiteSpace(stringContent))
+                    await response.WriteAsync(stringContent, cancellationToken);
+
+                return;
+            }
+
+            if (content is byte[] buffer)
+            {
+                await response.Body.WriteAsync(buffer, cancellationToken);
+                return;
+            }
+
+            var json = _contentSerializer.Serialize(content);
+            await response.WriteAsync(json, cancellationToken);
         }
     }
 }

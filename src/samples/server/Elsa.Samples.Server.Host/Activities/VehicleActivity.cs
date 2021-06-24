@@ -23,13 +23,15 @@ namespace Elsa.Samples.Server.Host.Activities
             _random = new Random();
         }
 
-        [ActivityProperty(
-            UIHint = ActivityPropertyUIHints.Dropdown,
+        [ActivityInput(
+            UIHint = ActivityInputUIHints.Dropdown,
             OptionsProvider = typeof(VehicleActivity),
             DefaultSyntax = SyntaxNames.Literal,
             SupportedSyntaxes = new[] { SyntaxNames.Literal, SyntaxNames.Json, SyntaxNames.JavaScript, SyntaxNames.Liquid }
         )]
         public string? Brand { get; set; }
+        
+        [ActivityOutput] public string? Output { get; set; }
 
         public object GetOptions(PropertyInfo property) => new RuntimeSelectListItemsProviderSettings(GetType(), new VehicleContext(_random.Next(100)));
 
@@ -41,7 +43,11 @@ namespace Elsa.Samples.Server.Host.Activities
             return new ValueTask<IEnumerable<SelectListItem>>(items);
         }
 
-        protected override IActivityExecutionResult OnExecute() => Done(Brand);
+        protected override IActivityExecutionResult OnExecute()
+        {
+            Output = Brand;
+            return Done();
+        }
     }
 
     public record VehicleContext(int RandomNumber);

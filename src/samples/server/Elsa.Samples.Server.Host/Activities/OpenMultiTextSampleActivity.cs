@@ -8,12 +8,19 @@ namespace Elsa.Samples.Server.Host.Activities
 {
     public class OpenMultiTextSampleActivity : Activity
     {
-        [ActivityProperty(
-            UIHint = ActivityPropertyUIHints.MultiText,
+        [ActivityInput(
+            UIHint = ActivityInputUIHints.MultiText,
             DefaultSyntax = SyntaxNames.Json,
             SupportedSyntaxes = new[] { SyntaxNames.Json, SyntaxNames.JavaScript, SyntaxNames.Liquid }
         )]
         public string? FavoriteLanguage { get; set; }
-        protected override IActivityExecutionResult OnExecute() => Done(FavoriteLanguage);
+        
+        [ActivityOutput] public string? Output { get; set; }
+        
+        protected override IActivityExecutionResult OnExecute()
+        {
+            Output = FavoriteLanguage;
+            return Done();
+        }
     }
 }

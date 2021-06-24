@@ -1,7 +1,8 @@
-using Elsa.Services;
 using System.Reflection;
 using Elsa;
-using Elsa.Bookmarks;
+using Elsa.Providers.Workflow;
+using Elsa.Providers.WorkflowContext;
+using Elsa.Services.Bookmarks;
 
 // ReSharper disable once CheckNamespace
 namespace Microsoft.Extensions.DependencyInjection
@@ -26,8 +27,10 @@ namespace Microsoft.Extensions.DependencyInjection
         }
 
         public static IServiceCollection AddBookmarkProvider<T>(this IServiceCollection services) where T : class, IBookmarkProvider => services.AddTransient<IBookmarkProvider, T>();
-       
-        public static IServiceCollection AddBookmarkProvider(this IServiceCollection services, Assembly assembly)
+
+        public static IServiceCollection AddBookmarkProvidersFrom<TMarker>(this IServiceCollection services) => services.AddBookmarkProvidersFrom(typeof(TMarker).Assembly);
+        
+        public static IServiceCollection AddBookmarkProvidersFrom(this IServiceCollection services, Assembly assembly)
         {         
             var triggerProviderType = typeof(IBookmarkProvider);
             var types = assembly.GetAllWithInterface(triggerProviderType);

@@ -2,9 +2,6 @@
 
     <PropertyGroup>
         <TargetFramework>net5.0</TargetFramework>
-        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-        <DockerfileContext>..</DockerfileContext>
-        <DockerfileFile>..\..\..\..\..\docker\Dockerfile</DockerfileFile>
         <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     </PropertyGroup>
 
@@ -14,6 +11,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\..\..\activities\Elsa.Activities.Email\Elsa.Activities.Email.csproj" />
+      <ProjectReference Include="..\..\..\..\activities\Elsa.Activities.Http\Elsa.Activities.Http.csproj" />
       <ProjectReference Include="..\..\..\..\activities\Elsa.Activities.Temporal.Quartz\Elsa.Activities.Temporal.Quartz.csproj" />
       <ProjectReference Include="..\..\..\..\core\Elsa\Elsa.csproj" />
       <ProjectReference Include="..\..\..\..\designer\bindings\aspnet\Elsa.Designer.Components.Web\Elsa.Designer.Components.Web.csproj" />

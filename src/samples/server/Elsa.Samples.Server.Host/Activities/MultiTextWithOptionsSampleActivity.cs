@@ -10,13 +10,15 @@ namespace Elsa.Samples.Server.Host.Activities
 {
     public class ClosedMultiTextSampleActivity : Activity, IActivityPropertyOptionsProvider
     {
-        [ActivityProperty(
-            UIHint = ActivityPropertyUIHints.MultiText,
+        [ActivityInput(
+            UIHint = ActivityInputUIHints.MultiText,
             OptionsProvider = typeof(ClosedMultiTextSampleActivity),
             DefaultSyntax = SyntaxNames.Json,
             SupportedSyntaxes = new[] { SyntaxNames.Json, SyntaxNames.JavaScript, SyntaxNames.Liquid }
         )]
         public string? FavoriteLanguage { get; set; }
+        
+        [ActivityOutput] public string? Output { get; set; }
 
         public object GetOptions(PropertyInfo property) => new[]
         {
@@ -26,6 +28,10 @@ namespace Elsa.Samples.Server.Host.Activities
             new SelectListItem("PHP", "php"),
         };
         
-        protected override IActivityExecutionResult OnExecute() => Done(FavoriteLanguage);
+        protected override IActivityExecutionResult OnExecute()
+        {
+            Output = FavoriteLanguage;
+            return Done();
+        }
     }
 }

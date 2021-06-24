@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Elsa.Bookmarks;
+using Elsa.Services.Bookmarks;
 using NodaTime;
 
 namespace Elsa.Activities.Temporal.Common.Bookmarks
@@ -22,27 +22,27 @@ namespace Elsa.Activities.Temporal.Common.Bookmarks
             _clock = clock;
         }
 
-        public override async ValueTask<IEnumerable<IBookmark>> GetBookmarksAsync(BookmarkProviderContext<Timer> context, CancellationToken cancellationToken)
+        public override async ValueTask<IEnumerable<BookmarkResult>> GetBookmarksAsync(BookmarkProviderContext<Timer> context, CancellationToken cancellationToken)
         {
-            var interval = await context.Activity.GetPropertyValueAsync(x => x.Timeout, cancellationToken);
+            var interval = await context.ReadActivityPropertyAsync(x => x.Timeout, cancellationToken);
             var executeAt = GetExecuteAt(context, interval);
 
             if (executeAt != null)
                 return new[]
                 {
-                    new TimerBookmark
+                    Result(new TimerBookmark
                     {
                         ExecuteAt = executeAt.Value,
                         Interval = interval
-                    }
+                    })
                 };
 
-            return Enumerable.Empty<IBookmark>();
+            return Enumerable.Empty<BookmarkResult>();
         }
 
         private Instant? GetExecuteAt(BookmarkProviderContext<Timer> context, Duration interval) =>
             context.Mode == BookmarkIndexingMode.WorkflowInstance 
-                ? context.Activity.GetState(x => x.ExecuteAt) 
+                ? context.Activity.GetPropertyValue(x => x.ExecuteAt) 
                 : _clock.GetCurrentInstant().Plus(interval);
     }
 }

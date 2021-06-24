@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Elsa.Activities.Telnyx.Client.Models;
 using Elsa.Activities.Telnyx.Client.Services;
 using Elsa.Activities.Telnyx.Extensions;
+using Elsa.Activities.Telnyx.Webhooks.Payloads.Call;
 using Elsa.ActivityResults;
 using Elsa.Attributes;
 using Elsa.Design;
@@ -14,40 +15,37 @@ using Refit;
 
 namespace Elsa.Activities.Telnyx.Activities
 {
-    [Action(
+    [Job(
         Category = Constants.Category,
-        Description = "Play an audio file on the call until the required DTMF signals are gathered to build interactive menus",
-        Outcomes = new[] { OutcomeNames.Done, TelnyxOutcomeNames.CallIsNoLongerActive },
+        Description = "Play an audio file on the call until the required DTMF signals are gathered to build interactive menus.",
+        Outcomes = new[] { TelnyxOutcomeNames.GatheringInput, TelnyxOutcomeNames.GatherCompleted, TelnyxOutcomeNames.CallIsNoLongerActive },
         DisplayName = "Gather Using Audio"
     )]
     public class GatherUsingAudio : Activity
     {
         private readonly ITelnyxClient _telnyxClient;
 
-        public GatherUsingAudio(ITelnyxClient telnyxClient)
-        {
-            _telnyxClient = telnyxClient;
-        }
+        public GatherUsingAudio(ITelnyxClient telnyxClient) => _telnyxClient = telnyxClient;
 
-        [ActivityProperty(
+        [ActivityInput(
             Label = "Call Control ID", Hint = "Unique identifier and token for controlling the call",
             Category = PropertyCategories.Advanced,
             SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid }
         )]
         public string? CallControlId { get; set; } = default!;
 
-        [ActivityProperty(
+        [ActivityInput(
             Label = "Audio URL",
             Hint = "The URL of a file to be played back at the beginning of each prompt. The URL can point to either a WAV or MP3 file.",
             SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid }
         )]
         public Uri AudioUrl { get; set; } = default!;
 
-        [ActivityProperty(Hint = "Use this field to add state to every subsequent webhook. It must be a valid Base-64 encoded string.", Category = PropertyCategories.Advanced,
+        [ActivityInput(Hint = "Use this field to add state to every subsequent webhook. It must be a valid Base-64 encoded string.", Category = PropertyCategories.Advanced,
             SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
         public string? ClientState { get; set; }
 
-        [ActivityProperty(
+        [ActivityInput(
             Label = "Command ID",
             Hint = "Use this field to avoid duplicate commands. Telnyx will ignore commands with the same Command ID.",
             Category = PropertyCategories.Advanced,
@@ -55,7 +53,7 @@ namespace Elsa.Activities.Telnyx.Activities
         )]
         public string? CommandId { get; set; }
 
-        [ActivityProperty(
+        [ActivityInput(
             Label = "Inter Digit Timeout",
             Hint = "The number of milliseconds to wait for input between digits.",
             Category = PropertyCategories.Advanced,
@@ -64,14 +62,14 @@ namespace Elsa.Activities.Telnyx.Activities
         )]
         public int? InterDigitTimeoutMillis { get; set; } = 5000;
 
-        [ActivityProperty(
+        [ActivityInput(
             Label = "Invalid Audio Url",
             Hint = "The URL of a file to play when digits don't match the Valid Digits setting or the number of digits is not between Min and Max. The URL can point to either a WAV or MP3 file.",
             SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid }
         )]
         public Uri? InvalidAudioUrl { get; set; }
 
-        [ActivityProperty(
+        [ActivityInput(
             Hint = "A list of all digits accepted as valid.",
             Category = PropertyCategories.Advanced,
             DefaultValue = "0123456789#*",
@@ -79,25 +77,28 @@ namespace Elsa.Activities.Telnyx.Activities
         )]
         public string? ValidDigits { get; set; } = "0123456789#*";
 
-        [ActivityProperty(Hint = "The minimum number of digits to fetch. This parameter has a minimum value of 1.", DefaultValue = 1, SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
+        [ActivityInput(Hint = "The minimum number of digits to fetch. This parameter has a minimum value of 1.", DefaultValue = 1, SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
         public int? MinimumDigits { get; set; } = 1;
 
-        [ActivityProperty(Hint = "The maximum number of digits to fetch. This parameter has a maximum value of 128.", DefaultValue = 128, SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
+        [ActivityInput(Hint = "The maximum number of digits to fetch. This parameter has a maximum value of 128.", DefaultValue = 128, SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
         public int? MaximumDigits { get; set; } = 128;
 
-        [ActivityProperty(Hint = "The maximum number of times the file should be played if there is no input from the user on the call.", DefaultValue = 3, SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
+        [ActivityInput(Hint = "The maximum number of times the file should be played if there is no input from the user on the call.", DefaultValue = 3, SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
         public int? MaximumTries { get; set; } = 3;
 
-        [ActivityProperty(Hint = "The digit used to terminate input if fewer than `maximum_digits` digits have been gathered.", DefaultValue = "#", SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
+        [ActivityInput(Hint = "The digit used to terminate input if fewer than `maximum_digits` digits have been gathered.", DefaultValue = "#", SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
         public string? TerminatingDigit { get; set; } = "#";
 
-        [ActivityProperty(
+        [ActivityInput(
             Label = "Timeout",
             Hint = "The number of milliseconds to wait for a DTMF response after file playback ends before a replaying the sound file.",
             Category = PropertyCategories.Advanced,
             DefaultValue = 60000,
             SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
         public int? TimeoutMillis { get; set; } = 60000;
+        
+        [ActivityOutput(Hint = "The received payload when gathering completed.")]
+        public CallGatherEndedPayload? ReceivedPayload { get; set; }
 
         protected override async ValueTask<IActivityExecutionResult> OnExecuteAsync(ActivityExecutionContext context)
         {
@@ -120,7 +121,7 @@ namespace Elsa.Activities.Telnyx.Activities
             try
             {
                 await _telnyxClient.Calls.GatherUsingAudioAsync(callControlId, request, context.CancellationToken);
-                return Done();
+                return Combine(Outcome(TelnyxOutcomeNames.GatheringInput), Suspend());
             }
             catch (ApiException e)
             {
@@ -129,6 +130,12 @@ namespace Elsa.Activities.Telnyx.Activities
 
                 throw new WorkflowException(e.Content ?? e.Message, e);
             }
+        }
+        
+        protected override IActivityExecutionResult OnResume(ActivityExecutionContext context)
+        {
+            ReceivedPayload = context.GetInput<CallGatherEndedPayload>();
+            return Outcome(TelnyxOutcomeNames.GatherCompleted);
         }
 
         private string? EmptyToNull(string? value) => value is "" ? null : value;

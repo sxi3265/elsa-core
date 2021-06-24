@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Elsa.Activities.Http.Bookmarks;
 using Elsa.Activities.Http.Extensions;
 using Elsa.Activities.Http.Models;
+using Elsa.Activities.Http.Parsers;
+using Elsa.Activities.Http.Parsers.Request;
 using Elsa.Activities.Http.Services;
 using Elsa.Persistence;
 using Elsa.Persistence.Specifications.WorkflowInstances;
@@ -40,8 +43,8 @@ namespace Elsa.Activities.Http.Middleware
             var useDispatch = httpContext.Request.GetUseDispatch();
 
             const string activityType = nameof(HttpEndpoint);
-            var trigger = new HttpEndpointBookmark(path, method, null);
-            var bookmark = new HttpEndpointBookmark(path, method, correlationId?.ToLowerInvariant());
+            var trigger = new HttpEndpointBookmark(path, method);
+            var bookmark = new HttpEndpointBookmark(path, method);
             var collectWorkflowsContext = new CollectWorkflowsContext(activityType, bookmark, trigger, correlationId, default, default, TenantId);
             var pendingWorkflows = await workflowLaunchpad.CollectWorkflowsAsync(collectWorkflowsContext, cancellationToken).ToList();
             var pendingWorkflowInstanceIds = pendingWorkflows.Select(x => x.WorkflowInstanceId).Distinct();
@@ -60,19 +63,20 @@ namespace Elsa.Activities.Http.Middleware
 
             var orderedContentParsers = contentParsers.OrderByDescending(x => x.Priority).ToList();
             var simpleContentType = request.ContentType?.Split(';').First();
-            var contentParser = orderedContentParsers.FirstOrDefault(x => x.SupportedContentTypes.Contains(simpleContentType, StringComparer.OrdinalIgnoreCase)) ?? orderedContentParsers.Last();
+            var contentParser = orderedContentParsers.FirstOrDefault(x => x.SupportedContentTypes.Contains(simpleContentType, StringComparer.OrdinalIgnoreCase)) ?? orderedContentParsers.LastOrDefault() ?? new DefaultHttpRequestBodyParser();
 
             foreach (var pendingWorkflow in pendingWorkflows)
             {
                 var pendingWorkflowInstance = pendingWorkflowInstances[pendingWorkflow.WorkflowInstanceId];
                 var workflowBlueprintWrapper = workflowBlueprintWrappers[pendingWorkflowInstance.DefinitionId];
-                var activityWrapper = workflowBlueprintWrapper.GetActivity<HttpEndpoint>(pendingWorkflow.ActivityId!);
-                var readContent = await activityWrapper!.GetPropertyValueAsync(x => x.ReadContent, cancellationToken);
+                var activityWrapper = workflowBlueprintWrapper.GetUnfilteredActivity<HttpEndpoint>(pendingWorkflow.ActivityId!);
+                var readContent = await activityWrapper!.EvaluatePropertyValueAsync(x => x.ReadContent, cancellationToken);
                 var inputModel = commonInputModel;
 
+                // TODO: Explain this + sequence.
                 if (readContent)
                 {
-                    var targetType = await activityWrapper.GetPropertyValueAsync(x => x.TargetType, cancellationToken);
+                    var targetType = await activityWrapper.EvaluatePropertyValueAsync(x => x.TargetType, cancellationToken);
                     inputModel = inputModel with { Body = await contentParser.ParseAsync(request, targetType, cancellationToken) };
                 }
 
@@ -87,6 +91,7 @@ namespace Elsa.Activities.Http.Middleware
                 if (useDispatch)
                 {
                     httpContext.Response.ContentType = "application/json";
+                    httpContext.Response.StatusCode = (int)HttpStatusCode.Accepted;
                     await httpContext.Response.WriteAsync(JsonConvert.SerializeObject(pendingWorkflows), cancellationToken);
                 }
 

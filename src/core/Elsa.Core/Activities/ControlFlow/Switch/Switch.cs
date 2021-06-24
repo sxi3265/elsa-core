@@ -9,7 +9,6 @@ using Elsa.Expressions;
 using Elsa.Services;
 using Elsa.Services.Models;
 using MediatR;
-using Newtonsoft.Json.Linq;
 
 // ReSharper disable once CheckNamespace
 namespace Elsa.Activities.ControlFlow
@@ -22,10 +21,10 @@ namespace Elsa.Activities.ControlFlow
     )]
     public class Switch : Activity, INotificationHandler<ScopeEvicted>
     {
-        [ActivityProperty(Hint = "The conditions to evaluate.", UIHint = "switch-case-builder", DefaultSyntax = "Switch")]
+        [ActivityInput(Hint = "The conditions to evaluate.", UIHint = "switch-case-builder", DefaultSyntax = "Switch")]
         public ICollection<SwitchCase> Cases { get; set; } = new List<SwitchCase>();
 
-        [ActivityProperty(
+        [ActivityInput(
             Hint = "The switch mode determines whether the first match should be scheduled, or all matches.",
             DefaultValue = SwitchMode.MatchFirst,
             SupportedSyntaxes = new[] { SyntaxNames.Literal, SyntaxNames.JavaScript, SyntaxNames.Liquid }
@@ -67,7 +66,7 @@ namespace Elsa.Activities.ControlFlow
             if (notification.EvictedScope.Type != nameof(Switch))
                 return Task.CompletedTask;
 
-            var data = notification.WorkflowExecutionContext.WorkflowInstance.ActivityData.GetItem(notification.EvictedScope.Id, () => new JObject());
+            var data = notification.WorkflowExecutionContext.WorkflowInstance.ActivityData.GetItem(notification.EvictedScope.Id, () => new Dictionary<string, object?>());
             data.SetState(nameof(EnteredScope), false);
             data.SetState("Unwinding", false);
 

@@ -95,8 +95,8 @@ namespace Elsa.Activities.AzureServiceBus.Services
 
                 foreach (var activity in workflowBlueprintWrapper.Filter<AzureServiceBusTopicMessageReceived>())
                 {
-                    var topicName = await activity.GetPropertyValueAsync(x => x.TopicName, cancellationToken);
-                    var subscriptionName = await activity.GetPropertyValueAsync(x => x.SubscriptionName, cancellationToken);
+                    var topicName = await activity.EvaluatePropertyValueAsync(x => x.TopicName, cancellationToken);
+                    var subscriptionName = await activity.EvaluatePropertyValueAsync(x => x.SubscriptionName, cancellationToken);
                     yield return (topicName, subscriptionName)!;
                 }
             }
@@ -104,7 +104,7 @@ namespace Elsa.Activities.AzureServiceBus.Services
         
         private static async Task<bool> WorkflowHasNonFinishedWorkflowsAsync(IWorkflowBlueprint workflowBlueprint, IWorkflowInstanceStore workflowInstanceStore, CancellationToken cancellationToken)
         {
-            var count = await workflowInstanceStore.CountAsync(new NonFinalizedWorkflowSpecification().WithWorkflowDefinition(workflowBlueprint.Id), cancellationToken);
+            var count = await workflowInstanceStore.CountAsync(new UnfinishedWorkflowSpecification().WithWorkflowDefinition(workflowBlueprint.Id), cancellationToken);
             return count > 0;
         }
     }

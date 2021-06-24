@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -6,7 +7,7 @@ using Elsa.Activities.ControlFlow;
 using Elsa.Activities.Telnyx.Client.Models;
 using Elsa.Activities.Telnyx.Client.Services;
 using Elsa.Activities.Telnyx.Models;
-using Elsa.Activities.Telnyx.Webhooks.Models;
+using Elsa.Activities.Telnyx.Services;
 using Elsa.Activities.Telnyx.Webhooks.Payloads.Call;
 using Elsa.Activities.Temporal;
 using Elsa.Attributes;
@@ -25,37 +26,37 @@ namespace Elsa.Activities.Telnyx.Activities
     [Action(
         Category = Constants.Category,
         Description = "Call a ring group.",
-        Outcomes = new[] { "Connected", "No Response" },
+        Outcomes = new[] {TelnyxOutcomeNames.Connected, TelnyxOutcomeNames.NoResponse},
         DisplayName = "Call Ring Group"
     )]
     public class CallRingGroup : CompositeActivity, IActivityPropertyDefaultValueProvider
     {
-        private readonly ILogger<CallRingGroup> _logger;
+        private readonly ILogger _logger;
 
         public CallRingGroup(ILogger<CallRingGroup> logger)
         {
             _logger = logger;
         }
 
-        [ActivityProperty(UIHint = ActivityPropertyUIHints.MultiText, DefaultSyntax = SyntaxNames.Json, SupportedSyntaxes = new[] { SyntaxNames.Json, SyntaxNames.JavaScript, SyntaxNames.Liquid })]
+        [ActivityInput(UIHint = ActivityInputUIHints.MultiText, DefaultSyntax = SyntaxNames.Json, SupportedSyntaxes = new[] {SyntaxNames.Json, SyntaxNames.JavaScript, SyntaxNames.Liquid})]
         public IList<string> Extensions
         {
             get => GetState<IList<string>>(() => new List<string>());
             set => SetState(value);
         }
 
-        [ActivityProperty(Label = "Call Control ID", Hint = "Unique identifier and token for controlling the call.", Category = PropertyCategories.Advanced, SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
+        [ActivityInput(Label = "Call Control ID", Hint = "Unique identifier and token for controlling the call.", Category = PropertyCategories.Advanced, SupportedSyntaxes = new[] {SyntaxNames.JavaScript, SyntaxNames.Liquid})]
         public string CallControlId
         {
             get => GetState<string>()!;
             set => SetState(value);
         }
 
-        [ActivityProperty(
+        [ActivityInput(
             Label = "Call Control App ID",
             Hint = "The ID of the Call Control App (formerly ID of the connection) to be used when dialing the destination.",
             Category = PropertyCategories.Advanced,
-            SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid }
+            SupportedSyntaxes = new[] {SyntaxNames.JavaScript, SyntaxNames.Liquid}
         )]
         public string? CallControlAppId
         {
@@ -63,16 +64,16 @@ namespace Elsa.Activities.Telnyx.Activities
             set => SetState(value);
         }
 
-        [ActivityProperty(SupportedSyntaxes = new[] { SyntaxNames.Literal, SyntaxNames.JavaScript, SyntaxNames.Liquid })]
+        [ActivityInput(SupportedSyntaxes = new[] {SyntaxNames.Literal, SyntaxNames.JavaScript, SyntaxNames.Liquid})]
         public RingGroupStrategy Strategy
         {
             get => GetState<RingGroupStrategy>();
             set => SetState(value);
         }
 
-        [ActivityProperty(
+        [ActivityInput(
             Hint = "The 'from' number to be used as the caller id presented to the destination ('To' number). The number should be in +E164 format. This attribute will default to the 'From' number of the original call if omitted.",
-            SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid }
+            SupportedSyntaxes = new[] {SyntaxNames.JavaScript, SyntaxNames.Liquid}
         )]
         public string? From
         {
@@ -80,10 +81,10 @@ namespace Elsa.Activities.Telnyx.Activities
             set => SetState(value);
         }
 
-        [ActivityProperty(
+        [ActivityInput(
             Hint =
                 "The string to be used as the caller id name (SIP From Display Name) presented to the destination ('To' number). The string should have a maximum of 128 characters, containing only letters, numbers, spaces, and -_~!.+ special characters. If omitted, the display name will be the same as the number in the 'From' field.",
-            SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid }
+            SupportedSyntaxes = new[] {SyntaxNames.JavaScript, SyntaxNames.Liquid}
         )]
         public string? FromDisplayName
         {
@@ -91,24 +92,51 @@ namespace Elsa.Activities.Telnyx.Activities
             set => SetState(value);
         }
 
-        [ActivityProperty(DefaultValueProvider = typeof(CallRingGroup), SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
+        [ActivityInput(DefaultValueProvider = typeof(CallRingGroup), SupportedSyntaxes = new[] {SyntaxNames.JavaScript, SyntaxNames.Liquid})]
         public Duration RingTime
         {
             get => GetState(() => Duration.FromSeconds(20));
             set => SetState(value);
         }
 
-        private string? DialedControlId
+        [ActivityInput(
+            Hint = "The maximum time to wait for anyone to pickup before giving up.",
+            SupportedSyntaxes = new[] {SyntaxNames.JavaScript, SyntaxNames.Liquid}
+        )]
+        public Duration? MaxQueueWaitTime
         {
-            get => GetState<string?>();
+            get => GetState<Duration>();
             set => SetState(value);
         }
 
-        private IList<string> DialedControlIds
+        [ActivityInput(
+            Hint = "The audio file to play while dialing.",
+            SupportedSyntaxes = new[] {SyntaxNames.JavaScript, SyntaxNames.Liquid}
+        )]
+        public Uri? MusicOnHold
         {
-            get => GetState(() => new List<string>());
+            get => GetState<Uri>();
             set => SetState(value);
         }
+
+        [ActivityInput(
+            Hint = "The audio file to play as intro.",
+            SupportedSyntaxes = new[] {SyntaxNames.JavaScript, SyntaxNames.Liquid}
+        )]
+        public Uri? IntroMusic
+        {
+            get => GetState<Uri>();
+            set => SetState(value);
+        }
+
+        [ActivityInput(
+            Hint = "Enables Answering Machine Detection.",
+            UIHint = ActivityInputUIHints.Dropdown,
+            Options = new[] {"disabled", "detect", "detect_beep", "detect_words", "greeting_end"},
+            DefaultValue = "disabled",
+            Category = PropertyCategories.Advanced,
+            SupportedSyntaxes = new[] {SyntaxNames.Literal, SyntaxNames.JavaScript, SyntaxNames.Liquid})]
+        public string? AnsweringMachineDetection { get; set; } = "disabled";
 
         private CallAnsweredPayload? CallAnsweredPayload
         {
@@ -122,12 +150,66 @@ namespace Elsa.Activities.Telnyx.Activities
             set => SetState(value);
         }
 
-        public override void Build(ICompositeActivityBuilder builder) =>
-            builder.Switch(cases =>
-            {
-                cases.Add(RingGroupStrategy.PrioritizedHunt.ToString(), () => Strategy == RingGroupStrategy.PrioritizedHunt, BuildPrioritizedHuntFlow);
-                cases.Add(RingGroupStrategy.RingAll.ToString(), () => Strategy == RingGroupStrategy.RingAll, BuildRingAllFlow);
-            });
+        private bool CallerHangup
+        {
+            get => GetState<bool>();
+            set => SetState(value);
+        }
+
+        public override void Build(ICompositeActivityBuilder builder)
+        {
+            // Root.
+            builder
+                .Then<Fork>(fork => fork.WithBranches("Call", "Hangup"), fork =>
+                {
+                    fork.When("Hangup")
+                        .ThenTypeNamed(CallHangupPayload.ActivityTypeName)
+                        .Then(() => CallerHangup = true)
+                        .ThenNamed("ExitWithNoResponse");
+
+                    fork.When("Call")
+                        .If(() => IntroMusic != null, @if =>
+                        {
+                            @if.When(OutcomeNames.True)
+                                .Then<PlayAudio>(playAudio => playAudio.WithAudioUrl(() => IntroMusic), playAudio => { playAudio.When(TelnyxOutcomeNames.CallPlaybackEnded).ThenNamed("If1"); });
+
+                            @if.When(OutcomeNames.False).ThenNamed("If1");
+                        })
+                        .Add<If>(@if => @if.WithCondition(() => MusicOnHold != null), @if =>
+                        {
+                            @if
+                                .When(OutcomeNames.True)
+                                .Then<PlayAudio>(playAudio => playAudio.WithAudioUrl(() => MusicOnHold).WithLoop("infinity"))
+                                .ThenNamed("InnerFork");
+
+                            @if
+                                .When(OutcomeNames.False)
+                                .ThenNamed("InnerFork");
+                        }).WithName("If1")
+                        .Add<Fork>(fork => fork.WithBranches("Ring", "Queue Timeout"), fork =>
+                        {
+                            fork.When("Ring")
+                                .While(() => !CallerHangup, iterate => iterate
+                                    .Switch(cases =>
+                                    {
+                                        cases.Add(RingGroupStrategy.PrioritizedHunt.ToString(), () => Strategy == RingGroupStrategy.PrioritizedHunt, BuildPrioritizedHuntFlow);
+                                        cases.Add(RingGroupStrategy.RingAll.ToString(), () => Strategy == RingGroupStrategy.RingAll, BuildRingAllFlow);
+                                    }))
+                                .ThenNamed("ExitWithNoResponse");
+
+                            fork.When("Queue Timeout")
+                                .IfFalse(() => IsNullOrZero(MaxQueueWaitTime), ifFalse => ifFalse.StartIn(() => MaxQueueWaitTime!.Value).ThenNamed("ExitWithNoResponse"));
+                        }).WithName("InnerFork");
+                });
+
+            // No Response exit node.
+            builder.Add<If>(@if => @if.WithCondition(() => MusicOnHold != null), @if =>
+                {
+                    @if.When(OutcomeNames.True).Then<StopAudioPlayback>(stopAudioPlayback => stopAudioPlayback.When(TelnyxOutcomeNames.CallPlaybackEnded).Finish(TelnyxOutcomeNames.NoResponse));
+                    @if.When(OutcomeNames.False).Finish(TelnyxOutcomeNames.NoResponse);
+                })
+                .WithName("ExitWithNoResponse");
+        }
 
         protected override async ValueTask OnExitAsync(ActivityExecutionContext context, object? output)
         {
@@ -153,67 +235,83 @@ namespace Elsa.Activities.Telnyx.Activities
         private void BuildPrioritizedHuntFlow(IOutcomeBuilder builder) =>
             builder
                 .ForEach(() => Extensions, iterate => iterate
-                    .Then<ResolveExtension>(a => a.WithExtension(context => context.GetInput<string>()))
-                    .Then<Dial>(a => a
-                        .WithConnectionId(() => CallControlAppId)
-                        .WithTo(context => context.GetInput<string>())
-                        .WithTimeoutSecs(() => (int) RingTime.TotalSeconds)
-                        .WithFrom(() => From)
-                        .WithFromDisplayName(() => FromDisplayName)
-                        .WithClientState(context => new ClientStatePayload(context.CorrelationId!).ToBase64())
-                    )
-                    .Then(context => DialedControlId = context.GetInput<DialResponse>()!.CallControlId)
-                    .Then<Fork>(fork => fork.WithBranches("Connected", "No Response"), fork =>
+                    .If(() => CallerHangup, @if =>
                     {
-                        fork
-                            .When("Connected")
-                            .ThenTypeNamed(CallAnsweredPayload.ActivityTypeName)
-                            .Then(context => CallAnsweredPayload = (CallAnsweredPayload) context.GetInput<TelnyxWebhook>()!.Data.Payload)
-                            .Then<BridgeCalls>(bridge => bridge
-                                .WithCallControlIdA(() => CallControlId)
-                                .WithCallControlIdB(() => DialedControlId))
-                            .ThenTypeNamed(CallBridgedPayload.ActivityTypeName)
-                            .ThenTypeNamed(CallBridgedPayload.ActivityTypeName)
-                            .Then<Finish>(finish => finish.WithOutcome("Connected").WithOutput(() => CallAnsweredPayload));
+                        @if.When(OutcomeNames.True)
+                            .Break();
 
-                        fork
-                            .When("No Response")
-                            .ThenTypeNamed(CallHangupPayload.ActivityTypeName);
+                        @if.When(OutcomeNames.False)
+                            .Then<Dial>(dial => dial
+                                    .WithConnectionId(() => CallControlAppId)
+                                    .WithTo(ResolveExtensionAsync)
+                                    .WithTimeoutSecs(() => (int) RingTime.TotalSeconds)
+                                    .WithFrom(() => From)
+                                    .WithFromDisplayName(() => FromDisplayName),
+                                dial =>
+                                {
+                                    dial
+                                        .When(TelnyxOutcomeNames.Answered)
+                                        .If(() => MusicOnHold != null, @if =>
+                                        {
+                                            @if.When(OutcomeNames.True)
+                                                .Then<StopAudioPlayback>(stopAudioPlayback => stopAudioPlayback
+                                                    .When(TelnyxOutcomeNames.CallPlaybackEnded)
+                                                    .ThenNamed("BridgeCalls1"));
+
+                                            @if.When(OutcomeNames.False)
+                                                .ThenNamed("BridgeCalls1");
+                                        })
+                                        .Add<BridgeCalls>(branch: bridgeCalls =>
+                                            bridgeCalls.When(TelnyxOutcomeNames.Bridged)
+                                                .Finish(activity => activity.WithOutcome(TelnyxOutcomeNames.Connected).WithOutput(context => context.GetInput<BridgedCallsOutput>()))).WithName("BridgeCalls1");
+                                }
+                            );
                     })
                 )
-                .Finish("No Response");
+                // If we don't have a queue wait time, then break out of outer loop.
+                .IfTrue(() => IsNullOrZero(MaxQueueWaitTime), @if => @if.Break());
 
         private void BuildRingAllFlow(IOutcomeBuilder builder) =>
             builder
                 .Then<Fork>(fork => fork.WithBranches("Connected", "Timeout", "Dial Everyone"), fork =>
                 {
                     fork
-                        .When("Connected")
+                        .When(TelnyxOutcomeNames.Connected)
                         .ThenTypeNamed(CallAnsweredPayload.ActivityTypeName)
-                        .Then(context => CallAnsweredPayload = (CallAnsweredPayload) context.GetInput<TelnyxWebhook>()!.Data.Payload)
-                        .Then<BridgeCalls>(bridge => bridge
+                        .Then(context => CallAnsweredPayload = context.GetInput<CallAnsweredPayload>()!)
+                        .If(() => MusicOnHold != null, @if =>
+                        {
+                            @if.When(OutcomeNames.True)
+                                .Then<StopAudioPlayback>(stopAudioPlayback => stopAudioPlayback
+                                    .When(TelnyxOutcomeNames.CallPlaybackEnded)
+                                    .ThenNamed("BridgeCalls2"));
+
+                            @if.When(OutcomeNames.False)
+                                .ThenNamed("BridgeCalls2");
+                        })
+                        .Add<BridgeCalls>(bridge => bridge
                             .WithCallControlIdA(() => CallControlId)
-                            .WithCallControlIdB(() => CallAnsweredPayload!.CallControlId))
-                        .ThenTypeNamed(CallBridgedPayload.ActivityTypeName)
-                        .ThenTypeNamed(CallBridgedPayload.ActivityTypeName)
-                        .Then<Finish>(finish => finish.WithOutcome("Connected").WithOutput(() => CallAnsweredPayload));
+                            .WithCallControlIdB(() => CallAnsweredPayload!.CallControlId), bridge => bridge
+                            .When(TelnyxOutcomeNames.Bridged)
+                            .Finish(activity => activity.WithOutcome(TelnyxOutcomeNames.Connected).WithOutput(context => context.GetInput<BridgedCallsOutput>()))).WithName("BridgeCalls2");
 
                     fork
                         .When("Timeout")
-                        .StartIn(RingTime)
-                        .Finish("No Response");
+                        .StartIn(() => RingTime)
+
+                        // If we don't have a queue wait time, then break out of outer loop.
+                        .If(@if => @if.WithCondition(() => IsNullOrZero(MaxQueueWaitTime)), @if => { @if.When(OutcomeNames.True).Break(); });
 
                     fork
                         .When("Dial Everyone")
                         .ParallelForEach(() => Extensions, iterate => iterate
-                            .Then<ResolveExtension>(a => a.WithExtension(context => context.GetInput<string>()))
                             .Then<Dial>(a => a
+                                .WithSuspendWorkflow(false)
                                 .WithConnectionId(() => CallControlAppId)
-                                .WithTo(context => context.GetInput<string>())
+                                .WithTo(ResolveExtensionAsync)
                                 .WithTimeoutSecs(() => (int) RingTime.TotalSeconds)
                                 .WithFrom(() => From)
                                 .WithFromDisplayName(() => FromDisplayName)
-                                .WithClientState(context => new ClientStatePayload(context.CorrelationId!).ToBase64())
                             )
                             .Then(CollectCallControlIds));
                 });
@@ -225,6 +323,19 @@ namespace Elsa.Activities.Telnyx.Activities
             collection.Add(dialResponse);
             CollectedDialResponses = collection;
         }
+
+        private static async ValueTask<string?> ResolveExtensionAsync(ActivityExecutionContext context)
+        {
+            if (context.Resuming)
+                return await context.GetActivityPropertyAsync<Dial, string>(x => x.To)!;
+
+            var extension = context.GetInput<string>()!;
+            var extensionProvider = context.GetService<IExtensionProvider>();
+            var resolvedExtension = await extensionProvider.GetAsync(extension, context.CancellationToken);
+            return resolvedExtension?.Number ?? extension;
+        }
+
+        private static bool IsNullOrZero(Duration? duration) => duration == null || duration.Value == Duration.Zero;
 
         object IActivityPropertyDefaultValueProvider.GetDefaultValue(PropertyInfo property) => Duration.FromSeconds(20);
     }

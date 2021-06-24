@@ -18,13 +18,15 @@ namespace Elsa.Activities.ControlFlow
     )]
     public class ForEach : Activity
     {
-        [ActivityProperty(
+        [ActivityInput(
             Hint = "A collection of items to iterate over.",
-            UIHint = ActivityPropertyUIHints.MultiLine,
+            UIHint = ActivityInputUIHints.MultiLine,
             DefaultSyntax = SyntaxNames.Json,
             SupportedSyntaxes = new[] { SyntaxNames.Json, SyntaxNames.JavaScript, SyntaxNames.Liquid }
         )]
         public ICollection<object> Items { get; set; } = new Collection<object>();
+        
+        [ActivityOutput] public object? Output { get; set; }
 
         private int? CurrentIndex
         {
@@ -59,7 +61,8 @@ namespace Elsa.Activities.ControlFlow
                 scope.Variables.Set("CurrentValue", currentValue);
 
                 CurrentIndex = currentIndex + 1;
-                return Combine(Outcome(OutcomeNames.Iterate, currentValue));
+                Output = currentValue;
+                return Outcome(OutcomeNames.Iterate, currentValue);
             }
 
             CurrentIndex = null;

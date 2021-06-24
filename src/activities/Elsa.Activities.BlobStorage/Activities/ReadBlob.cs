@@ -19,12 +19,14 @@ namespace Elsa.Activities.BlobStorage
         private readonly IBlobStorage _storage;
         public ReadBlob(IBlobStorage storage) => _storage = storage;
 
-        [ActivityProperty(Hint = "The Id assigned to the blob.")]
+        [ActivityInput(Hint = "The Id assigned to the blob.")]
         [Required]
         public string BlobId { get; set; } = default!;
 
-        [ActivityProperty(Hint = "If set, the output of this activity is written to the specified file. Otherwise, the bytes of the blob will be set as the activity output.")]
+        [ActivityInput(Hint = "If set, the output of this activity is written to the specified file. Otherwise, the bytes of the blob will be set as the activity output.")]
         public string? DestinationFilePath { get; set; }
+
+        [ActivityOutput] public byte[]? Output { get; set; }
 
         protected override async ValueTask<IActivityExecutionResult> OnExecuteAsync(ActivityExecutionContext context)
         {
@@ -32,9 +34,10 @@ namespace Elsa.Activities.BlobStorage
                 throw new System.Exception($"{nameof(BlobId)} must have a value");
 
             if (string.IsNullOrWhiteSpace(DestinationFilePath))
-                return Done(await _storage.ReadBytesAsync(BlobId, context.CancellationToken));
+                Output = await _storage.ReadBytesAsync(BlobId, context.CancellationToken);
+            else
+                await _storage.ReadToFileAsync(BlobId, DestinationFilePath, context.CancellationToken);
 
-            await _storage.ReadToFileAsync(BlobId, DestinationFilePath, context.CancellationToken);
             return Done();
         }
     }

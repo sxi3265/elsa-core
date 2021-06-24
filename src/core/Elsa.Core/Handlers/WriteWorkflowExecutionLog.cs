@@ -39,9 +39,7 @@ namespace Elsa.Handlers
             
             var data = new
             {
-                Output = activityExecutionContext.Output,
                 Outcomes = activityExecutionContext.Outcomes,
-                State = activityExecutionContext.GetActivityData()
             };
 
             var resuming = activityExecutionContext.Resuming;

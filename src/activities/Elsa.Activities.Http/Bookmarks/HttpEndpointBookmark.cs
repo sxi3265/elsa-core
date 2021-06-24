@@ -2,27 +2,26 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Elsa.Bookmarks;
+using Elsa.Services.Bookmarks;
 using Microsoft.AspNetCore.Http;
 
 namespace Elsa.Activities.Http.Bookmarks
 {
-    public record HttpEndpointBookmark(PathString Path, string? Method, string? CorrelationId) : IBookmark
+    public record HttpEndpointBookmark(PathString Path, string? Method) : IBookmark
     {
     }
 
     public class HttpEndpointBookmarkProvider : BookmarkProvider<HttpEndpointBookmark, HttpEndpoint>
     {
-        public override async ValueTask<IEnumerable<IBookmark>> GetBookmarksAsync(BookmarkProviderContext<HttpEndpoint> context, CancellationToken cancellationToken)
+        public override async ValueTask<IEnumerable<BookmarkResult>> GetBookmarksAsync(BookmarkProviderContext<HttpEndpoint> context, CancellationToken cancellationToken)
         {
-            var path = ToLower(await context.Activity.GetPropertyValueAsync(x => x.Path, cancellationToken))!;
-            var correlationId = ToLower(context.ActivityExecutionContext.WorkflowExecutionContext.CorrelationId);
-            var methods = (await context.Activity.GetPropertyValueAsync(x => x.Methods, cancellationToken))?.Select(x => x.ToLowerInvariant()) ?? Enumerable.Empty<string>();
+            var path = ToLower(await context.ReadActivityPropertyAsync(x => x.Path, cancellationToken))!;
+            var methods = (await context.ReadActivityPropertyAsync(x => x.Methods, cancellationToken))?.Select(ToLower) ?? Enumerable.Empty<string>();
 
-            HttpEndpointBookmark CreateBookmark(string method) => new(path, method, correlationId);
+            BookmarkResult CreateBookmark(string method) => Result(new(path, method));
             return methods.Select(CreateBookmark);
         }
 
-        private static string? ToLower(string? s) => s?.ToLowerInvariant();
+        private static string ToLower(string s) => s.ToLowerInvariant();
     }
 }

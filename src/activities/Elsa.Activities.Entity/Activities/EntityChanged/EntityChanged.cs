@@ -16,18 +16,27 @@ namespace Elsa.Activities.Entity
     )]
     public class EntityChanged : Activity
     {
-        [ActivityProperty(UIHint = ActivityPropertyUIHints.SingleLine, Hint = "The Entity Name to observe. Matches any entity if no value is specified.", SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
+        [ActivityInput(UIHint = ActivityInputUIHints.SingleLine, Hint = "The Entity Name to observe. Matches any entity if no value is specified.", SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
         public string? EntityName { get; set; }
 
-        [ActivityProperty(
-            UIHint = ActivityPropertyUIHints.Dropdown,
+        [ActivityInput(
+            UIHint = ActivityInputUIHints.Dropdown,
             Hint = "The Entity Changed Action to observe. Matches any action if no value is specified.",
             Options = new[] { "Added", "Updated", "Deleted" },
             SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid }
         )]
         public EntityChangedAction? Action { get; set; }
 
-        protected override IActivityExecutionResult OnExecute(ActivityExecutionContext context) => context.WorkflowExecutionContext.IsFirstPass ? Done(context.Input) : Suspend();
-        protected override IActivityExecutionResult OnResume(ActivityExecutionContext context) => Done(context.Input);
+        [ActivityOutput] public object? Output { get; set; }
+
+        protected override IActivityExecutionResult OnExecute(ActivityExecutionContext context) => context.WorkflowExecutionContext.IsFirstPass ? ExecuteInternal(context) : Suspend();
+
+        protected override IActivityExecutionResult OnResume(ActivityExecutionContext context) => ExecuteInternal(context);
+
+        private IActivityExecutionResult ExecuteInternal(ActivityExecutionContext context)
+        {
+            Output = context.Input;
+            return Done();
+        }
     }
 }

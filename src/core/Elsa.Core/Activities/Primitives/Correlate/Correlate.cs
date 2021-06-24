@@ -16,9 +16,15 @@ namespace Elsa.Activities.Primitives
     )]
     public class Correlate : Activity
     {
-        [ActivityProperty(Hint = "An expression that evaluates to the value to store as the correlation ID.", SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
+        [ActivityInput(Hint = "An expression that evaluates to the value to store as the correlation ID.", SupportedSyntaxes = new[] { SyntaxNames.JavaScript, SyntaxNames.Liquid })]
         public string Value { get; set; } = default!;
+        
+        [ActivityOutput] public string? Output { get; set; }
 
-        protected override IActivityExecutionResult OnExecute() => Combine(Done(Value), new CorrelateResult(Value));
+        protected override IActivityExecutionResult OnExecute()
+        {
+            Output = Value;
+            return Combine(Done(), new CorrelateResult(Value));
+        }
     }
 }

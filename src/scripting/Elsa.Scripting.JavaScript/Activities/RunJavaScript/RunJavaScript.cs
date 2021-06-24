@@ -30,16 +30,18 @@ namespace Elsa.Activities.JavaScript
             _javaScriptService = javaScriptService;
         }
 
-        [ActivityProperty(Hint = "The JavaScript to run.", UIHint = ActivityPropertyUIHints.CodeEditor, OptionsProvider = typeof(RunJavaScript))]
+        [ActivityInput(Hint = "The JavaScript to run.", UIHint = ActivityInputUIHints.CodeEditor, OptionsProvider = typeof(RunJavaScript))]
         public string? Script { get; set; }
 
-        [ActivityProperty(
+        [ActivityInput(
             Hint = "The possible outcomes that can be set by the script.",
-            UIHint = ActivityPropertyUIHints.MultiText,
+            UIHint = ActivityInputUIHints.MultiText,
             DefaultSyntax = SyntaxNames.Json,
             SupportedSyntaxes = new[] {SyntaxNames.Json, SyntaxNames.JavaScript, SyntaxNames.Liquid}
         )]
         public ICollection<string> PossibleOutcomes { get; set; } = new List<string> {OutcomeNames.Done};
+        
+        [ActivityOutput] public object? Output { get; set; }
 
         protected override async ValueTask<IActivityExecutionResult> OnExecuteAsync(ActivityExecutionContext context)
         {
@@ -64,7 +66,8 @@ namespace Elsa.Activities.JavaScript
             if (!outcomes.Any())
                 outcomes.Add(OutcomeNames.Done);
 
-            return new CombinedResult(Output(output), new OutcomeResult(outcomes));
+            Output = output;
+            return Outcomes(outcomes);
         }
 
         public Task Handle(RenderingTypeScriptDefinitions notification, CancellationToken cancellationToken)

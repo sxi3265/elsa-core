@@ -16,15 +16,15 @@ namespace Elsa.Builders
         public string? DisplayName { get; set; }
         public string? Description { get; set; }
         IDictionary<string, IActivityPropertyValueProvider>? PropertyValueProviders { get; }
+        IDictionary<string,string> PropertyStorageProviders { get; set; }
         bool PersistWorkflowEnabled { get; set; }
         bool LoadWorkflowContextEnabled { get; set; }
         bool SaveWorkflowContextEnabled { get; set; }
-        bool PersistOutputEnabled { get; set; }
         string? Source { get; }
-        IActivityBuilder Add<T>(string activityTypeName, Action<ISetupActivity<T>>? setup = default, [CallerLineNumber] int lineNumber = default, [CallerFilePath] string? sourceFile = default) where T : class, IActivity;
+        IActivityBuilder Add<T>(string activityTypeName, Action<ISetupActivity<T>>? setup = default, Action<IActivityBuilder>? branch = default, [CallerLineNumber] int lineNumber = default, [CallerFilePath] string? sourceFile = default) where T : class, IActivity;
         IOutcomeBuilder When(string outcome);
         IActivityBuilder Then(IActivityBuilder targetActivity);
-        IConnectionBuilder ThenNamed(string activityName);
+        IActivityBuilder ThenNamed(string activityName);
         IActivityBuilder WithId(string? value);
         IActivityBuilder WithName(string? value);
         IActivityBuilder WithDisplayName(string? value);

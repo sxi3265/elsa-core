@@ -23,13 +23,15 @@ namespace Elsa.Activities.UserTask.Activities
     {
         private readonly IContentSerializer _serializer;
 
-        [ActivityProperty(
-            UIHint = ActivityPropertyUIHints.MultiText,
+        [ActivityInput(
+            UIHint = ActivityInputUIHints.MultiText,
             Hint = "Provide a list of available actions",
             DefaultSyntax = SyntaxNames.Json,
             SupportedSyntaxes = new[] { SyntaxNames.Json, SyntaxNames.JavaScript, SyntaxNames.Liquid }
         )]
         public ICollection<string> Actions { get; set; } = new List<string>();
+        
+        [ActivityOutput] public string? Output { get; set; }
 
         public UserTask(IContentSerializer serializer)
         {
@@ -48,9 +50,10 @@ namespace Elsa.Activities.UserTask.Activities
         protected override IActivityExecutionResult OnResume(ActivityExecutionContext context)
         {
             var userAction = GetUserAction(context);
-            return Outcome(userAction, userAction);
+            Output = userAction;
+            return Outcome(userAction);
         }
 
-        private string GetUserAction(ActivityExecutionContext context) => (string) context.Input!;
+        private static string GetUserAction(ActivityExecutionContext context) => (string) context.Input!;
     }
 }

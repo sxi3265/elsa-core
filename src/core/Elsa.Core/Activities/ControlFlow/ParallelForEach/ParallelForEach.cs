@@ -18,13 +18,15 @@ namespace Elsa.Activities.ControlFlow
     )]
     public class ParallelForEach : Activity
     {
-        [ActivityProperty(
+        [ActivityInput(
             Hint = "A collection of items to iterate over.",
-            UIHint = ActivityPropertyUIHints.MultiLine,
+            UIHint = ActivityInputUIHints.MultiLine,
             DefaultSyntax = SyntaxNames.Json,
             SupportedSyntaxes = new[] { SyntaxNames.Json, SyntaxNames.JavaScript, SyntaxNames.Liquid }
         )]
         public ICollection<object> Items { get; set; } = new Collection<object>();
+        
+        
 
         protected override IActivityExecutionResult OnExecute(ActivityExecutionContext context)
         {

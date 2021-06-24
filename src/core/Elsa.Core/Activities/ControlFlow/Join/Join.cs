@@ -11,7 +11,6 @@ using Elsa.Models;
 using Elsa.Services;
 using Elsa.Services.Models;
 using MediatR;
-using Newtonsoft.Json.Linq;
 
 // ReSharper disable once CheckNamespace
 namespace Elsa.Activities.ControlFlow
@@ -37,8 +36,8 @@ namespace Elsa.Activities.ControlFlow
             WaitAny
         }
 
-        [ActivityProperty(
-            UIHint = ActivityPropertyUIHints.Dropdown,
+        [ActivityInput(
+            UIHint = ActivityInputUIHints.Dropdown,
             Hint = "WaitAll: wait for all incoming activities to have executed. WaitAny: continue execution as soon as any of the incoming activity has executed.",
             Options = new[] { "WaitAll", "WaitAny" },
             SupportedSyntaxes = new[] { SyntaxNames.Literal, SyntaxNames.JavaScript, SyntaxNames.Liquid }
@@ -160,7 +159,7 @@ namespace Elsa.Activities.ControlFlow
 
             var inboundConnections = inboundTransitionsQuery.ToList();
             var joinBlueprint = inboundConnections.FirstOrDefault()?.Target.Activity;
-            var joinActivityData = joinBlueprint != null ? workflowExecutionContext.WorkflowInstance.ActivityData.GetItem(joinBlueprint.Id, () => new JObject()) : default;
+            var joinActivityData = joinBlueprint != null ? workflowExecutionContext.WorkflowInstance.ActivityData.GetItem(joinBlueprint.Id, () => new Dictionary<string, object?>()) : default;
 
             if (joinActivityData == null)
                 return;
