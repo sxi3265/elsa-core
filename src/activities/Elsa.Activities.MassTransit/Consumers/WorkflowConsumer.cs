@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Elsa.Activities.MassTransit.Bookmarks;
 using Elsa.Activities.MassTransit.Consumers.MessageCorrelation;
 using Elsa.Services;
+using Elsa.Services.Models;
 using MassTransit;
 using MediatR;
 
@@ -40,18 +41,12 @@ namespace Elsa.Activities.MassTransit.Consumers
 
             var bookmark = new MessageReceivedBookmark
             {
-                MessageType = message.GetType().Name,
-                CorrelationId = correlationId.ToString()
-            };
-            var trigger = new MessageReceivedBookmark
-            {
                 MessageType = message.GetType().Name
             };
 
-            await _workflowLaunchpad.CollectAndExecuteWorkflowsAsync(new CollectWorkflowsContext(
+            await _workflowLaunchpad.CollectAndExecuteWorkflowsAsync(new WorkflowsQuery(
                 nameof(ReceiveMassTransitMessage),
                 bookmark,
-                trigger,
                 correlationId.ToString()
             ));
         }

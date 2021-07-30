@@ -4,9 +4,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Elsa.Activities.AzureServiceBus.Models;
 using Elsa.Activities.AzureServiceBus.Options;
-using Elsa.Exceptions;
+using Elsa.Models;
 using Elsa.Services;
 using Elsa.Services.Bookmarks;
+using Elsa.Services.Models;
 using Microsoft.Azure.ServiceBus;
 using Microsoft.Azure.ServiceBus.Core;
 using Microsoft.Extensions.Logging;
@@ -73,10 +74,9 @@ namespace Elsa.Activities.AzureServiceBus.Services
             };
 
             var bookmark = CreateBookmark(message);
-            var trigger = CreateTrigger(message);
-            var launchContext = new CollectWorkflowsContext(ActivityType, bookmark, trigger, correlationId);
+            var launchContext = new WorkflowsQuery(ActivityType, bookmark, correlationId);
             
-            await _workflowLaunchpad.UseServiceAsync(service => service.CollectAndDispatchWorkflowsAsync(launchContext, model, cancellationToken));
+            await _workflowLaunchpad.UseServiceAsync(service => service.CollectAndDispatchWorkflowsAsync(launchContext, new WorkflowInput(model), cancellationToken));
         }
 
         private Task ExceptionReceivedHandler(ExceptionReceivedEventArgs e)

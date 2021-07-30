@@ -2,7 +2,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Elsa.Activities.Webhooks.Swagger.Examples;
 using Elsa.Persistence.Specifications;
-using Elsa.Server.Api.Swagger.Examples;
 using Elsa.Services;
 using Elsa.Webhooks.Models;
 using Elsa.Webhooks.Persistence;
@@ -33,12 +32,11 @@ namespace Elsa.Activities.Webhooks.Endpoints.WebhookDefinitions
         [SwaggerResponseExample(StatusCodes.Status200OK, typeof(WebhookDefinitionExample))]
         [SwaggerOperation(
             Summary = "Creates a new webhook definition or updates an existing one.",
-            Description =
-                "Creates a new webhook definition or updates an existing one.",
+            Description = "Creates a new webhook definition or updates an existing one.",
             OperationId = "WebhookDefinitions.Post",
             Tags = new[] { "WebhookDefinitions" })
         ]
-        public async Task<ActionResult<WebhookDefinition>> Handle([FromBody] SaveRequest request, [FromRoute] ApiVersion apiVersion, CancellationToken cancellationToken)
+        public async Task<ActionResult<WebhookDefinition>> Handle([FromBody] SaveWebhookDefinitionRequest request, [FromRoute] ApiVersion apiVersion, CancellationToken cancellationToken)
         {
             var webhookId = request.Id;
             var webhookDefinition = !string.IsNullOrWhiteSpace(webhookId) ? await _store.FindAsync(new EntityIdSpecification<WebhookDefinition>(webhookId), cancellationToken) : default;
